@@ -15,6 +15,8 @@
 
 use core::fmt::Debug;
 
+use ringbuffer::{ConstGenericRingBuffer, RingBufferWrite};
+
 pub use accelerometer;
 use accelerometer::{
     error::Error as AccelerometerError,
@@ -26,14 +28,16 @@ use embedded_hal::blocking::{
     delay::DelayUs,
     i2c::{Write, WriteRead},
 };
-
+use ringbuffer::RingBuffer;
+// Private usage
 use crate::{
     config::Bitfield,
     error::SensorError,
     register::{Bank0, Register, RegisterBank},
 };
+// Public exports (and optional usage)
 pub use crate::{
-    config::{AccelOdr, AccelRange, Address, GyroOdr, GyroRange, PowerMode},
+    config::{AccelOdr, AccelRange, Address, GyroOdr, GyroRange, PowerMode, FifoCountFormat , FifoCountEndian , FifoMode, FifoBypass},
     error::Error,
 };
 
@@ -217,6 +221,25 @@ where
     /// Set the output data rate of the gyroscope
     pub fn set_gyro_odr(&mut self, odr: GyroOdr) -> Result<(), Error<E>> {
         self.update_reg(&Bank0::GYRO_CONFIG0, odr.bits(), GyroOdr::BITMASK)
+    }
+
+    pub fn read_fifo(&mut self) -> Result<usize, Error<E>> {
+        let _fifo = self.read_fifo_x32().unwrap().0;
+        Ok(_fifo.len())        
+    }
+
+    pub fn read_fifo_x32(&mut self) -> Result<(ConstGenericRingBuffer<F32x3, 32>, bool), SensorError> {
+        let _is_empty = false;
+        let _err = SensorError::FifoDisabled;
+        let mut buff = ConstGenericRingBuffer::new();
+        buff.push(F32x3::default());
+        buff.push(F32x3::default());
+        buff.push(F32x3::default());
+        Ok((buff, _is_empty))
+        // Verify FIFO enabled
+        // Read FIFO count
+        // Read FIFO samples up to lesser of count or size of return buffer
+        // Return samples and "isEmpty" flag
     }
 
     // -----------------------------------------------------------------------

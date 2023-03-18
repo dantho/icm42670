@@ -164,7 +164,7 @@ impl Bitfield for PowerMode {
 
 impl Default for PowerMode {
     fn default() -> Self {
-        PowerMode::Sleep
+        Self::Sleep
     }
 }
 
@@ -340,6 +340,196 @@ impl TryFrom<u8> for GyroOdr {
             0b1011 => Ok(Hz25),
             0b1100 => Ok(Hz12_5),
             _ => Err(SensorError::InvalidDiscriminant),
+        }
+    }
+}
+
+/// FIFO Count Format
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FifoCountFormat {
+    /// FIFO count is reported in bytes
+    InBytes = 0,
+    /// FIFO count is reported in records
+    /// (1 record = 16 bytes for header + gyro + accel + temp sensor data + time stamp
+    /// or 8 bytes for header + gyro/accel + temp sensor data)
+    InRecords = 1,
+}
+
+impl Bitfield for FifoCountFormat {
+    const BITMASK: u8 = 0b0100_0000;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 6
+    }
+}
+
+impl Default for FifoCountFormat {
+    fn default() -> Self {
+        Self::InBytes
+    }
+}
+
+impl TryFrom<u8> for FifoCountFormat {
+    type Error = SensorError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use FifoCountFormat::*;
+        match value {
+            0 => Ok(InBytes),
+            1 => Ok(InRecords),
+            _ => Err(SensorError::BadConfig),
+        }
+    }
+}
+
+impl From<bool> for FifoCountFormat {
+    fn from(value: bool) -> Self {
+        use FifoCountFormat::*;
+        if value {
+            InRecords
+        } else {
+            InBytes
+        }
+    }
+}
+
+/// FIFO Count Endianess
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FifoCountEndian {
+    /// Fifo count is reported in Little Endian format
+    LittleEndian = 0,
+    /// Fifo count is reported in Big Endian format
+    BigEndian = 1,
+}
+
+impl Bitfield for FifoCountEndian {
+    const BITMASK: u8 = 0b0010_0000;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 5
+    }
+}
+
+impl Default for FifoCountEndian {
+    fn default() -> Self {
+        Self::BigEndian
+    }
+}
+
+impl TryFrom<u8> for FifoCountEndian {
+    type Error = SensorError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use FifoCountEndian::*;
+        match value {
+            0 => Ok(LittleEndian),
+            1 => Ok(BigEndian),
+            _ => Err(SensorError::BadConfig),
+        }
+    }
+}
+
+impl From<bool> for FifoCountEndian {
+    fn from(value: bool) -> Self {
+        use FifoCountEndian::*;
+        if value {
+            BigEndian
+        } else {
+            LittleEndian
+        }
+    }
+}
+
+/// FIFO Mode control
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FifoMode {
+    /// Stream-to-FIFO Mode
+    Stream = 0,
+    /// Stop-on-FULL Mode
+    StopOnFull = 1,
+}
+
+impl Bitfield for FifoMode {
+    const BITMASK: u8 = 0b0000_0010;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 1
+    }
+}
+
+impl Default for FifoMode {
+    fn default() -> Self {
+        Self::Stream
+    }
+}
+
+impl TryFrom<u8> for FifoMode {
+    type Error = SensorError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use FifoMode::*;
+        match value {
+            0 => Ok(Stream),
+            1 => Ok(StopOnFull),
+            _ => Err(SensorError::BadConfig),
+        }
+    }
+}
+
+impl From<bool> for FifoMode {
+    fn from(value: bool) -> Self {
+        use FifoMode::*;
+        if value {
+            StopOnFull
+        } else {
+            Stream
+        }
+    }
+}
+
+/// FIFO bypass control
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FifoBypass {
+    /// FIFO is not bypassed
+    FifoInUse = 0,
+    /// Stop-on-FULL Mode
+    FifoIsBypassed = 1,
+}
+
+impl Bitfield for FifoBypass {
+    const BITMASK: u8 = 0b0000_0001;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
+
+impl Default for FifoBypass {
+    fn default() -> Self {
+        Self::FifoIsBypassed
+    }
+}
+
+impl TryFrom<u8> for FifoBypass {
+    type Error = SensorError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use FifoBypass::*;
+        match value {
+            0 => Ok(FifoInUse),
+            1 => Ok(FifoIsBypassed),
+            _ => Err(SensorError::BadConfig),
+        }
+    }
+}
+
+impl From<bool> for FifoBypass {
+    fn from(value: bool) -> Self {
+        use FifoBypass::*;
+        if value {
+            FifoIsBypassed
+        } else {
+            FifoInUse
         }
     }
 }

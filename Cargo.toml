@@ -13,3 +13,4 @@ categories   = ["aerospace", "embedded", "hardware-support", "no-std"]
 [dependencies]
 accelerometer = "0.12.0"
 embedded-hal  = "0.2.7"
+ringbuffer = { version = "0.12.0", default_features = false }
