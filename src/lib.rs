@@ -28,7 +28,7 @@ use embedded_hal::blocking::{
     delay::DelayUs,
     i2c::{Write, WriteRead},
 };
-use ringbuffer::RingBuffer;
+
 // Private usage
 use crate::{
     config::Bitfield,
@@ -184,7 +184,7 @@ where
     /// Return the currently configured gyroscope range
     pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
-        let fs_sel = self.read_reg(&Bank0::GYRO_CONFIG0)? >> 5;
+        let fs_sel = (self.read_reg(&Bank0::GYRO_CONFIG0)? & GyroRange::BITMASK) >> 5;
         let range = GyroRange::try_from(fs_sel)?;
 
         Ok(range)
@@ -198,7 +198,7 @@ where
     /// Return the currently configured output data rate for the accelerometer
     pub fn accel_odr(&mut self) -> Result<AccelOdr, Error<E>> {
         // `ACCEL_ODR` occupies bits 3:0 in the register
-        let odr = self.read_reg(&Bank0::ACCEL_CONFIG0)? & 0xF;
+        let odr = self.read_reg(&Bank0::ACCEL_CONFIG0)? & AccelOdr::BITMASK;
         let odr = AccelOdr::try_from(odr)?;
 
         Ok(odr)
@@ -212,7 +212,7 @@ where
     /// Return the currently configured output data rate for the gyroscope
     pub fn gyro_odr(&mut self) -> Result<GyroOdr, Error<E>> {
         // `GYRO_ODR` occupies bits 3:0 in the register
-        let odr = self.read_reg(&Bank0::GYRO_CONFIG0)? & 0xF;
+        let odr = self.read_reg(&Bank0::GYRO_CONFIG0)? & GyroOdr::BITMASK;
         let odr = GyroOdr::try_from(odr)?;
 
         Ok(odr)
@@ -223,9 +223,38 @@ where
         self.update_reg(&Bank0::GYRO_CONFIG0, odr.bits(), GyroOdr::BITMASK)
     }
 
-    pub fn read_fifo(&mut self) -> Result<usize, Error<E>> {
-        let _fifo = self.read_fifo_x32().unwrap().0;
-        Ok(_fifo.len())        
+    /// Return the currently configured count format for the FIFO
+    pub fn fifo_count_format(&mut self) -> Result<FifoCountFormat, Error<E>> {
+        let mask = FifoCountFormat::BITMASK;
+        let reg = Bank0::INTF_CONFIG0;
+        let fmt = self.read_reg(&reg)? & mask >> Self::first_bit(mask)?;
+        let fmt = FifoCountFormat::try_from(fmt)?;
+
+        Ok(fmt)
+    }
+
+    /// Set the output data rate of the gyroscope
+    pub fn set_fifo_count_endian(&mut self, fmt: FifoCountEndian) -> Result<(), Error<E>> {
+        let mask = FifoCountEndian::BITMASK;
+        let reg = Bank0::INTF_CONFIG0;
+        self.update_reg(&reg, fmt.bits(), mask)
+    }
+
+    /// Return the currently configured count format for the FIFO
+    pub fn fifo_count_endian(&mut self) -> Result<FifoCountEndian, Error<E>> {
+        let mask = FifoCountEndian::BITMASK;
+        let reg = Bank0::INTF_CONFIG0;
+        let endian = self.read_reg(&reg)? & mask >> Self::first_bit(mask)?;
+        let endian = FifoCountEndian::try_from(endian)?;
+
+        Ok(endian)
+    }
+
+    /// Set the output data rate of the gyroscope
+    pub fn set_fifo_count_format(&mut self, fmt: FifoCountFormat) -> Result<(), Error<E>> {
+        let mask = FifoCountFormat::BITMASK;
+        let reg = Bank0::INTF_CONFIG0;
+        self.update_reg(&reg, fmt.bits(), mask)
     }
 
     pub fn read_fifo_x32(&mut self) -> Result<(ConstGenericRingBuffer<F32x3, 32>, bool), SensorError> {
@@ -355,6 +384,20 @@ where
             self.write_reg(reg, value)
         }
     }
+
+    /// Returns first bit set in a bit mask
+    /// Returns Err(()) if no bits are set (zero)
+    fn first_bit(bit_mask: u8) -> Result<u8, Error<E>> {
+        let mut first = None;
+        for bit in 0..8 {
+            if bit_mask & 1<<bit > 0 {
+                first = Some(bit);
+                break;
+            }
+        }
+        first.ok_or(Error::SensorError(SensorError::BadConfig))
+    }
+
 }
 
 impl<I2C, E> Accelerometer for Icm42670<I2C>
